@@ -14,11 +14,11 @@ Here is the overview of the setup
 ## Deployment
 ### Prerequisites
 -	[Patch Baseline](https://docs.aws.amazon.com/systems-manager/latest/userguide/sysman-patch-baseline-console.html) with **Compliance level** set to **critical**
-- Build Lambda deployment package based on [index.js](https://https://github.com/aws-samples/aws-systemsmanager-patchcompliance-to-securityhub/blob/master/index.js) following the guide [here](https://aws.amazon.com/premiumsupport/knowledge-center/lambda-deployment-package-nodejs/). Please note the aws-sdk is the only package needed for the deployment package. You can also find more information about the folder structure by following this link [here](https://docs.aws.amazon.com/lambda/latest/dg/nodejs-package.html#nodejs-package-dependencies). Upload the package to S3 bucket.
+- Build Lambda deployment package based on [index.js](https://github.com/aws-samples/aws-systemsmanager-patchcompliance-to-securityhub/blob/master/index.js) following the guide [here](https://aws.amazon.com/premiumsupport/knowledge-center/lambda-deployment-package-nodejs/). Please note the aws-sdk is the only package needed for the deployment package. You can also find more information about the folder structure by following this link [here](https://docs.aws.amazon.com/lambda/latest/dg/nodejs-package.html#nodejs-package-dependencies). Upload the package to S3 bucket.
 
 ### Walkthrough
 
-[Import-To-Sec-Hub.json](https://https://github.com/aws-samples/aws-systemsmanager-patchcompliance-to-securityhub/blob/master/Import-To-Sec-Hub.json) will go through the following steps:
+[Import-To-Sec-Hub.json](https://github.com/aws-samples/aws-systemsmanager-patchcompliance-to-securityhub/blob/master/Import-To-Sec-Hub.json) will go through the following steps:
 1.	Setup IAM rules and Permissions
 2.	Setup Lambda 
 3.	Setup Maintenance Windows 
