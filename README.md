@@ -9,7 +9,7 @@ This is a sample solution to import critical patch compliance findings into [AWS
 
 Here is the overview of the setup
 
-![alt text](https://https://github.com/aws-samples/aws-systemsmanager-patchcompliance-to-securityhub/blob/master/overview.png)
+![alt text](https://github.com/aws-samples/aws-systemsmanager-patchcompliance-to-securityhub/blob/master/overview.png)
 
 ## Deployment
 ### Prerequisites
