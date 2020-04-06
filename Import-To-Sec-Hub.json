@@ -1,0 +1,237 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Parameters": {
+        "TargetTagKey": {
+            "Type": "String",
+            "Description": "(Required) The tag key of instances that would be targets of maintenance window created."
+        },
+        "TargetTagValue": {
+            "Type": "String",
+            "Description": "(Required) The tag value of instances that would be targets of maintenance window created."
+        },
+        "ExistingLambdaExecutionRole": {
+            "Type": "String",
+            "Description": "(Optional) ARN of the role that lambda assumes to import compliance data from SSM and send it to security hub."
+        },
+        "S3KeyParam": {
+            "Type": "String",
+            "Description": "(Required) S3 Key of the Node ZIP file being executed in lambda."
+        },
+        "S3BucketParam": {
+            "Type": "String",
+            "Description": "(Required) S3 bucket of the Node ZIP file being executed in lambda."
+        }
+    },
+    "Conditions": {
+        "CreateExecutionRoleCondition": {
+            "Fn::Equals": [
+                {
+                    "Ref": "ExistingLambdaExecutionRole"
+                },
+                ""
+            ]
+        }
+    },
+    "Resources": {
+        "LambdaIamRole": {
+            "Type": "AWS::IAM::Role",
+            "Condition": "CreateExecutionRoleCondition",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "lambda.amazonaws.com"
+                                ]
+                            },
+                            "Action": [
+                                "sts:AssumeRole"
+                            ]
+                        }
+                    ]
+                },
+                "Policies": [
+                    {
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Sid": "VisualEditor0",
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "ssm:ListComplianceItems",
+                                        "ssm:ListComplianceSummaries",
+                                        "ssm:ListResourceComplianceSummaries"
+                                    ],
+                                    "Resource": "*"
+                                }
+                            ]
+                        },
+                        "PolicyName": "List-Compliance-Items-Policy"
+                    },
+                    {
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Sid": "VisualEditor0",
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "securityhub:EnableSecurityHub",
+                                        "securityhub:EnableImportFindingsForProduct",
+                                        "securityhub:BatchImportFindings"
+                                    ],
+                                    "Resource": "*"
+                                }
+                            ]
+                        },
+                        "PolicyName": "Import-Into-Security-Hub-Policy"
+                    }
+                ]
+            }
+        },
+        "MaintenanceWindow": {
+            "Type": "AWS::SSM::MaintenanceWindow",
+            "Properties": {
+                "AllowUnassociatedTargets": false,
+                "Cutoff": 1,
+                "Description": "Maintenance Window to Import Systems Manager Patch Compliance Data to AWS Security Hub",
+                "Duration": 2,
+                "Name": "ScanPatchComplianceandExportToSecurityHub",
+                "Schedule": "rate(60 minute)",
+                "ScheduleTimezone": "US/Eastern"
+            }
+        },
+        "Lambda": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+                "Code": {
+                    "S3Bucket": {
+                        "Ref": "S3BucketParam"
+                    },
+                    "S3Key": {
+                        "Ref": "S3KeyParam"
+                    }
+                },
+                "Description": "Lambda function which exports data from Systems Manager Patch Manager and imports it into Security Hub Findings",
+                "FunctionName": "SSMImportPatchComplianceToSecurityHub",
+                "Handler": "index.handler",
+                "Role": {
+                    "Fn::If": [
+                        "CreateExecutionRoleCondition",
+                        {
+                            "Fn::GetAtt": [
+                                "LambdaIamRole",
+                                "Arn"
+                            ]
+                        },
+                        {
+                            "Ref": "ExistingLambdaExecutionRole"
+                        }
+                    ]
+                },
+                "Runtime": "nodejs10.x"
+            }
+        },
+        "MaintenanceWindowTarget": {
+            "Type": "AWS::SSM::MaintenanceWindowTarget",
+            "Properties": {
+                "Description": "Targets of Scan Patch Compliance Maintenance Window",
+                "Name": "ScanForComplianceTargets",
+                "ResourceType": "INSTANCE",
+                "Targets": [
+                    {
+                        "Key": {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    "tag:",
+                                    {
+                                        "Ref": "TargetTagKey"
+                                    }
+                                ]
+                            ]
+                        },
+                        "Values": [
+                            {
+                                "Ref": "TargetTagValue"
+                            }
+                        ]
+                    }
+                ],
+                "WindowId": {
+                    "Ref": "MaintenanceWindow"
+                }
+            }
+        },
+        "MaintenanceWindowTaskForPatchScan": {
+            "Type": "AWS::SSM::MaintenanceWindowTask",
+            "Properties": {
+                "Description": "Patch Scan",
+                "MaxConcurrency": "10",
+                "MaxErrors": "10",
+                "Name": "PatchScan",
+                "Priority": 1,
+                "Targets": [
+                    {
+                        "Key": "WindowTargetIds",
+                        "Values": [
+                            {
+                                "Ref": "MaintenanceWindowTarget"
+                            }
+                        ]
+                    }
+                ],
+                "TaskArn": "AWS-RunPatchBaseline",
+                "TaskInvocationParameters": {
+                    "MaintenanceWindowRunCommandParameters": {
+                        "Parameters": {
+                            "Operation": [
+                                "Scan"
+                            ]
+                        }
+                    }
+                },
+                "TaskType": "RUN_COMMAND",
+                "WindowId": {
+                    "Ref": "MaintenanceWindow"
+                }
+            }
+        },
+        "MaintenanceWindowTaskForExport": {
+            "Type": "AWS::SSM::MaintenanceWindowTask",
+            "Properties": {
+                "Description": "Compliance Export",
+                "MaxConcurrency": "10",
+                "MaxErrors": "10",
+                "Name": "ComplianceExport",
+                "Priority": 10,
+                "Targets": [
+                    {
+                        "Key": "WindowTargetIds",
+                        "Values": [
+                            {
+                                "Ref": "MaintenanceWindowTarget"
+                            }
+                        ]
+                    }
+                ],
+                "TaskArn": {
+                    "Ref": "Lambda"
+                },
+                "TaskInvocationParameters": {
+                    "MaintenanceWindowLambdaParameters": {
+                        "Payload" : { "Fn::Base64" : "{\"instnaceid\": \"{{TARGET_ID}}\"}" }
+                    }
+                },
+                "TaskType": "LAMBDA",
+                "WindowId": {
+                    "Ref": "MaintenanceWindow"
+                }
+            }
+        }
+    }
+}
