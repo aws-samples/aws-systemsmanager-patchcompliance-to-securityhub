@@ -1,4 +1,4 @@
-# Run code before terminating an EC2 Auto Scaling instance
+# Reporting AWS Systems Manager patch compliance data to AWS Security Hub for multiple accounts under AWS Organizations
 
 CloudFormation template and index.js related to [this blog]() published on the [AWS Management & Governance Blog](https://aws.amazon.com/blogs/mt/)
 
