@@ -1,6 +1,6 @@
 # Reporting AWS Systems Manager patch compliance data to AWS Security Hub for multiple accounts under AWS Organizations
 
-CloudFormation template and index.js related to [this blog]() published on the [AWS Management & Governance Blog](https://aws.amazon.com/blogs/mt/)
+CloudFormation template and index.js related to [this blog](https://aws.amazon.com/blogs/mt/multi-account-patch-compliance-with-patch-manager-and-security-hub/) published on the [AWS Management & Governance Blog](https://aws.amazon.com/blogs/mt/)
 
 ## Overview
 This is a sample solution to import critical patch compliance findings into [AWS Security Hub](https://aws.amazon.com/security-hub/). Additionally, you can view aggregated patch compliance data across accounts by aggregating Security Hub findings across accounts. The solution will create a Maintenance Window with two tasks
