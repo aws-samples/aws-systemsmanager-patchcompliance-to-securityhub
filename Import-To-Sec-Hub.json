@@ -133,7 +133,8 @@
                         }
                     ]
                 },
-                "Runtime": "nodejs10.x"
+                "Runtime": "nodejs10.x",
+                "Timeout": 900
             }
         },
         "MaintenanceWindowTarget": {
