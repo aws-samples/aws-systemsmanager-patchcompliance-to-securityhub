@@ -31,70 +31,39 @@ var listItemsParams = {
         "InstanceID"
     ]
 }
-var complianceResourceSummaryParams = {
-    Filters: [
-        {
-            Key: "AWS:ComplianceSummary.Status",
-            Values: ["NON_COMPLIANT"],
-            Type: "Equal"
-        },
-        {
-            Key: "AWS:ComplianceSummary.ComplianceType",
-            Values: ["Patch"],
-            Type: "Equal"
-        }
-    ]
-}
+
 function systemManagerSyncSecurityHub(resolve, reject) {
-    ssm.listResourceComplianceSummaries(complianceResourceSummaryParams, function (err, complianceSummary) {
+    ssm.listComplianceItems(listItemsParams, function (err, complianceItems) {
         if (err) {
-            console.log(err);
+            console.log(err, err.stack);
             reject(err);
-            return;
         }
 
-        if (complianceSummary.ResourceComplianceSummaryItems[0] != undefined) {
-            var resources = [];
-            complianceSummary.ResourceComplianceSummaryItems.forEach(function (singleComplianceItem) {
-                if (singleComplianceItem.ResourceType && 'ManagedInstance' === (singleComplianceItem.ResourceType)) {
-                    resources.push(singleComplianceItem.ResourceId);
-                }
-            });
-
-            listItemsParams.ResourceIds = resources;
-
-            ssm.listComplianceItems(listItemsParams, function (err, complianceItems) {
+        if (complianceItems['ComplianceItems'][0] != undefined) {
+            sts.getCallerIdentity({}, function (err, stsData) {
                 if (err) {
-                    console.log(err, err.stack);
+                    console.log(err);
                     reject(err);
+                    return;
                 }
+                var missingPatches = getMissingPatches(complianceItems);
 
-                sts.getCallerIdentity({}, function (err, stsData) {
+                var findings = [];
+                Object.values(missingPatches).forEach(function (singleComplianceItemFinding) {
+                    findings.push(getSingleComplianceItemFinding(singleComplianceItemFinding, stsData));
+                });
+                console.log(JSON.stringify(findings));
+
+                securityhub.batchImportFindings({
+                    'Findings': findings
+                }, function (err, secHubData) {
                     if (err) {
-                        console.log(err);
                         reject(err);
                         return;
                     }
-                    var missingPatches = getMissingPatches(complianceItems);
-
-                    var findings = [];
-                    Object.values(missingPatches).forEach(function (singleComplianceItemFinding) {
-                        findings.push(getSingleComplianceItemFinding(singleComplianceItemFinding, stsData));
-                    });
-                    console.log(JSON.stringify(findings));
-
-                    securityhub.batchImportFindings({
-                        'Findings': findings
-                    }, function (err, secHubData) {
-                        if (err) {
-                            reject(err);
-                            return;
-                        }
-                        else {
-                            resolve(secHubData);
-                        }
-                    });
-
+                    else {
+                        resolve(secHubData);
+                    }
                 });
 
             });
@@ -102,15 +71,17 @@ function systemManagerSyncSecurityHub(resolve, reject) {
             console.log("There is no instance with missing patches and compliance severity set as critical")
             return;
         }
+
     });
 }
+
 var getSingleComplianceItemFinding = function (missingPatch, stsData) {
     return {
         AwsAccountId: stsData.Account,
         CreatedAt: new Date().toISOString(),
         Description: 'A critical patch is missing in some of the instances. Check further details in Systems Manager Compliance \n Patch Title: ' + missingPatch.Title + '\n Patch Id: ' + missingPatch.Id,
         GeneratorId: 'SSM',
-        Id: missingPatch.Title,
+        Id: missingPatch.Title + ' - ' + InstanceID,
         ProductArn: 'arn:aws:securityhub:' + process.env.AWS_REGION + ':' + stsData.Account + ':product/' + stsData.Account + '/default',
         Resources: missingPatch.resources,
         SchemaVersion: "2018-10-08",
@@ -150,8 +121,11 @@ function getMissingPatches(complianceItems, Title, map) {
     return missingPatches;
 }
 
+var InstanceID
+
 exports.handler = async (event) => {
-    var InstanceID = event.instnaceid
+    InstanceID = event.instanceid
     console.log(InstanceID)
+    listItemsParams.ResourceIds = [InstanceID];
     return new Promise(systemManagerSyncSecurityHub);
 }
