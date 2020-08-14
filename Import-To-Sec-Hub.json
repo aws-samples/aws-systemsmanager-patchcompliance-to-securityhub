@@ -63,7 +63,6 @@
                                     "Effect": "Allow",
                                     "Action": [
                                         "ssm:ListComplianceItems",
-                                        "ssm:ListComplianceSummaries",
                                         "ssm:ListResourceComplianceSummaries"
                                     ],
                                     "Resource": "*"
@@ -89,6 +88,77 @@
                             ]
                         },
                         "PolicyName": "Import-Into-Security-Hub-Policy"
+                    },
+                    {
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": "logs:CreateLogGroup",
+                                    "Resource": [
+                                        {
+                                            "Fn::Join": [
+                                                "",
+                                                [
+                                                    "arn:aws:logs:",
+                                                    {
+                                                        "Ref": "AWS::Region"
+                                                    },
+                                                    ":",
+                                                    {
+                                                        "Ref": "AWS::AccountId"
+                                                    },
+                                                    ":*"
+                                                ]
+                                            ]
+                                        }
+                                    ]
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "logs:CreateLogStream",
+                                        "logs:PutLogEvents"
+                                    ],
+                                    "Resource": [
+                                        {
+                                            "Fn::Join": [
+                                                "",
+                                                [
+                                                    "arn:aws:logs:",
+                                                    {
+                                                        "Ref": "AWS::Region"
+                                                    },
+                                                    ":",
+                                                    {
+                                                        "Ref": "AWS::AccountId"
+                                                    },
+                                                    ":log-group:/aws/lambda/SSMImportPatchComplianceToSecurityHub"
+                                                ]
+                                            ]
+                                        },
+                                        {
+                                            "Fn::Join": [
+                                                "",
+                                                [
+                                                    "arn:aws:logs:",
+                                                    {
+                                                        "Ref": "AWS::Region"
+                                                    },
+                                                    ":",
+                                                    {
+                                                        "Ref": "AWS::AccountId"
+                                                    },
+                                                    ":log-group:/aws/lambda/SSMImportPatchComplianceToSecurityHub:log-stream:*"
+                                                ]
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        "PolicyName": "Write-to-Amazon-CloudWatch-Logs-Policy"
                     }
                 ]
             }
@@ -206,7 +276,7 @@
             "Type": "AWS::SSM::MaintenanceWindowTask",
             "Properties": {
                 "Description": "Compliance Export",
-                "MaxConcurrency": "10",
+                "MaxConcurrency": "1",
                 "MaxErrors": "10",
                 "Name": "ComplianceExport",
                 "Priority": 10,
@@ -225,7 +295,9 @@
                 },
                 "TaskInvocationParameters": {
                     "MaintenanceWindowLambdaParameters": {
-                        "Payload" : { "Fn::Base64" : "{\"instnaceid\": \"{{TARGET_ID}}\"}" }
+                        "Payload": {
+                            "Fn::Base64": "{\"instanceid\": \"{{TARGET_ID}}\"}"
+                        }
                     }
                 },
                 "TaskType": "LAMBDA",
