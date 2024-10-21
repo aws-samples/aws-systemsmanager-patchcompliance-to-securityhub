@@ -2,6 +2,8 @@
 
 CloudFormation template and index.js related to [Multi-Account patch compliance with Patch Manager and Security Hub](https://aws.amazon.com/blogs/mt/multi-account-patch-compliance-with-patch-manager-and-security-hub/) blog post published on the [AWS Management & Governance Blog](https://aws.amazon.com/blogs/mt/). 
 
+**Note**: Since 10/2020, viewing patch compliance findings across AWS accounts in AWS Security Hub is supported natively. For more information please see What’s new announcement titled [View patch compliance findings across AWS accounts in AWS Security Hub](https://aws.amazon.com/about-aws/whats-new/2020/09/view-patch-compliance-findings-aws-accounts-aws-security-hub/).
+
 ## Overview
 This is a sample solution to import critical patch compliance findings into [AWS Security Hub](https://aws.amazon.com/security-hub/). Additionally, you can view aggregated patch compliance data across accounts by aggregating Security Hub findings across accounts. The solution will create a Maintenance Window with two tasks
 1. Run [AWS-RunPatchBaselin](https://docs.aws.amazon.com/systems-manager/latest/userguide/patch-manager-about-aws-runpatchbaseline.html) in scan mode to report the patch results to compliance.
